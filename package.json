@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "yarn workspaces run build",
+    "build": "yarn workspace @lmstudio-proxy/common build && yarn workspace @lmstudio-proxy/client build && yarn workspace @lmstudio-proxy/server build && yarn workspace @lmstudio-proxy/test build",
     "clean": "yarn workspaces run clean",
     "test": "yarn workspaces run test",
     "lint": "eslint . --ext .ts,.tsx",

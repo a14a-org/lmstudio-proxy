@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build": "echo 'No build needed for test package'",
     "test": "ts-node run-tests.ts",
     "test:server": "ts-node test-server.ts",
     "test:client": "ts-node test-client.ts"
