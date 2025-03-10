@@ -1,0 +1,19 @@
+{
+  "name": "@lmstudio-proxy/test",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "ts-node run-tests.ts",
+    "test:server": "ts-node test-server.ts",
+    "test:client": "ts-node test-client.ts"
+  },
+  "dependencies": {
+    "@lmstudio-proxy/common": "^0.1.0",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.1.6"
+  }
+}

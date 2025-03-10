@@ -1,0 +1,42 @@
+{
+  "name": "lmstudio-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Secure proxy system for LM Studio",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces run build",
+    "clean": "yarn workspaces run clean",
+    "test": "yarn workspaces run test",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "client": "yarn workspace @lmstudio-proxy/client start",
+    "server": "yarn workspace @lmstudio-proxy/server start",
+    "test:integration": "yarn workspace @lmstudio-proxy/test test",
+    "test:server": "yarn workspace @lmstudio-proxy/test test:server",
+    "test:client": "yarn workspace @lmstudio-proxy/test test:client"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a14a-org/lmstudio-proxy.git"
+  },
+  "author": "a14a-org",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.16.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.7",
+    "typescript": "^5.0.4"
+  }
+}
