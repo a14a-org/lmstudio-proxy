@@ -57,12 +57,15 @@ COPY --from=build /app/packages/server/package.json ./packages/server/
 COPY --from=build /app/packages/common/package.json ./packages/common/
 COPY --from=build /app/package.json ./
 
+# Install wget for health checks
+RUN apk --no-cache add curl
+
 # Expose the port the server listens on
 EXPOSE 3000
 
-# Health check
+# Health check - using curl with IPv4 instead of wget
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD curl -f --ipv4 http://127.0.0.1:3000/health || exit 1
 
 # Start the server
 CMD ["node", "packages/server/dist/index.js"] 
