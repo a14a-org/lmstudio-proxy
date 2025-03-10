@@ -71,6 +71,39 @@ yarn build
    yarn start
    ```
 
+## Deployment on Coolify
+
+The LM Studio Proxy server can be easily deployed using Coolify. This repository includes all necessary configurations for a seamless deployment.
+
+### Prerequisites
+
+- A running Coolify instance
+- Access to your Coolify dashboard
+
+### Deployment Steps
+
+1. In Coolify, create a new service from a Git repository
+2. Connect to the LM Studio Proxy repository (https://github.com/a14a-org/lmstudio-proxy)
+3. Select "Docker" as the build method
+4. The Docker configuration will be automatically detected from the `coolify.json` file
+5. Set the required environment variables in Coolify:
+   - `API_KEY`: Your chosen API key for authentication
+   - `JWT_SECRET`: A secure random string for JWT token signing
+6. Deploy the service
+
+### Configuration Options
+
+You can adjust the following environment variables in Coolify:
+
+- `PORT`: The port the server will listen on (default: 3000)
+- `LOG_LEVEL`: Logging detail level (debug, info, warn, error)
+- `WS_PATH`: WebSocket endpoint path
+- `JWT_EXPIRES_IN`: JWT token expiration time
+
+### Verification
+
+Once deployed, you can verify the server is running by accessing the health endpoint at `https://your-deployment-url/health`
+
 ## License
 
 MIT
