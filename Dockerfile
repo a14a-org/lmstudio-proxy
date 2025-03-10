@@ -3,9 +3,6 @@ FROM node:20-alpine AS build
 # Create app directory
 WORKDIR /app
 
-# Install global dependencies
-RUN npm install -g yarn
-
 # Copy package.json and yarn.lock
 COPY package.json yarn.lock ./
 COPY packages/server/package.json ./packages/server/
