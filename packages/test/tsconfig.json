@@ -6,12 +6,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "include": [
-    "./**/*.ts"
-  ],
-  "references": [
-    { "path": "../common" },
-    { "path": "../server" },
-    { "path": "../client" }
-  ]
-} 
+  "include": ["./**/*.ts"],
+  "references": [{ "path": "../common" }, { "path": "../server" }, { "path": "../client" }]
+}

@@ -14,4 +14,4 @@
     "JWT_SECRET": "",
     "JWT_EXPIRES_IN": "24h"
   }
-} 
+}
