@@ -33,7 +33,15 @@ export class LMStudioClient {
   async makeRequest(endpoint: string, payload: any): Promise<any> {
     try {
       logger.debug(`Making request to ${endpoint}`, { payload });
-      const response = await this.axiosInstance.post(`/${endpoint}`, payload);
+
+      // Special handling for models endpoint - should be a GET request
+      if (endpoint === API_ENDPOINTS.MODELS) {
+        const response = await this.axiosInstance.get(endpoint);
+        return response.data;
+      }
+
+      // For all other endpoints, use POST
+      const response = await this.axiosInstance.post(endpoint, payload);
       return response.data;
     } catch (error) {
       logger.error(`Error making request to LM Studio (${endpoint})`, error);
@@ -69,7 +77,7 @@ export class LMStudioClient {
 
       const response = await axios({
         method: 'post',
-        url: `${this.baseUrl}/${endpoint}`,
+        url: `${this.baseUrl}${endpoint}`,
         data: payload,
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +110,7 @@ export class LMStudioClient {
   async checkAvailability(): Promise<boolean> {
     try {
       // Try to get models list as a simple availability check
-      await this.axiosInstance.get(`/${API_ENDPOINTS.MODELS}`);
+      await this.axiosInstance.get(API_ENDPOINTS.MODELS);
       return true;
     } catch (error) {
       logger.error('LM Studio availability check failed', error);
