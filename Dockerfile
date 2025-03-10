@@ -3,10 +3,22 @@ FROM node:20-alpine AS build
 # Create app directory
 WORKDIR /app
 
-# Copy package.json and yarn.lock
+# Copy package.json files for all workspaces
 COPY package.json yarn.lock ./
 COPY packages/server/package.json ./packages/server/
 COPY packages/common/package.json ./packages/common/
+COPY packages/client/package.json ./packages/client/
+COPY packages/test/package.json ./packages/test/
+
+# Create necessary directory structure
+RUN mkdir -p packages/server/src packages/common/src packages/client/src packages/test/src
+
+# Copy tsconfig files
+COPY tsconfig.json ./
+COPY packages/server/tsconfig.json ./packages/server/
+COPY packages/common/tsconfig.json ./packages/common/
+COPY packages/client/tsconfig.json ./packages/client/
+COPY packages/test/tsconfig.json ./packages/test/
 
 # Install dependencies
 RUN yarn install --frozen-lockfile
@@ -14,8 +26,11 @@ RUN yarn install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Build TypeScript code
-RUN yarn build
+# Build the common package first
+RUN cd packages/common && yarn build
+
+# Then build the server package
+RUN cd packages/server && yarn build
 
 # Remove development dependencies
 RUN yarn install --production --ignore-scripts --prefer-offline
