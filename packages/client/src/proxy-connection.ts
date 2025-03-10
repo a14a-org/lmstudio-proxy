@@ -291,9 +291,12 @@ export class ProxyConnection extends EventEmitter {
     try {
       let stream: PassThrough;
 
-      if (endpoint === 'chat/completions') {
+      // Remove leading slash if present for comparison
+      const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+      if (normalizedEndpoint === 'chat/completions') {
         stream = await this.lmStudioClient.streamChatCompletion(payload);
-      } else if (endpoint === 'completions') {
+      } else if (normalizedEndpoint === 'completions') {
         stream = await this.lmStudioClient.streamCompletion(payload);
       } else {
         throw new Error(`Streaming not supported for endpoint: ${endpoint}`);
