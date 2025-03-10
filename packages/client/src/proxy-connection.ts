@@ -254,21 +254,59 @@ export class ProxyConnection extends EventEmitter {
           throw new Error(`Unsupported request type: ${message.type}`);
       }
 
+      logger.info(`Processing request ${requestId} for endpoint ${endpoint}`, {
+        messageType: message.type,
+        requestId,
+        endpoint,
+        timestamp: new Date().toISOString()
+      });
+
       if (message.stream) {
         await this.handleStreamingRequest(requestId, endpoint, data);
       } else {
         const response = await this.lmStudioClient.makeRequest(endpoint, data);
 
+        // Determine the correct response message type based on the request type
+        let responseType: MessageType;
+        switch (message.type) {
+          case MessageType.CHAT_REQUEST:
+            responseType = MessageType.CHAT_RESPONSE;
+            break;
+          case MessageType.COMPLETION_REQUEST:
+            responseType = MessageType.COMPLETION_RESPONSE;
+            break;
+          case MessageType.EMBEDDINGS_REQUEST:
+            responseType = MessageType.EMBEDDINGS_RESPONSE;
+            break;
+          case MessageType.MODELS_REQUEST:
+            responseType = MessageType.MODELS_RESPONSE;
+            break;
+          default:
+            throw new Error(`Unsupported request type: ${message.type}`);
+        }
+
+        logger.info(`Sending response for request ${requestId}:`, {
+          responseType,
+          requestId,
+          endpoint,
+          timestamp: new Date().toISOString()
+        });
+
         // Send response back to server
         this.send(
-          createMessage(MessageType.CHAT_RESPONSE, {
+          createMessage(responseType, {
             requestId,
             data: response,
           })
         );
       }
     } catch (error) {
-      logger.error(`Error handling request ${requestId}:`, error);
+      logger.error(`Error handling request ${requestId}:`, {
+        error,
+        requestId,
+        endpoint: message.type,
+        timestamp: new Date().toISOString()
+      });
 
       // Send error response
       this.send(
