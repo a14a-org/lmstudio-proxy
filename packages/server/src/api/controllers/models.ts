@@ -7,8 +7,10 @@ import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('models-controller');
 
-// Request tracking map to route responses back to the correct HTTP client
-const pendingRequests = new Map();
+// Track pending requests
+const pendingRequests = new Map<string, any>();
+// Export pendingRequests for use in other modules
+export { pendingRequests };
 
 // Cache models list for a short time to avoid frequent requests
 let modelsCache: any = null;

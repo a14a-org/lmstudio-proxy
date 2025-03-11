@@ -7,6 +7,12 @@ import { processCompletionResponse } from '../api/controllers/completions';
 import { processEmbeddingsResponse } from '../api/controllers/embeddings';
 import { processModelsResponse } from '../api/controllers/models';
 
+// Import pendingRequests from controllers
+import { pendingRequests as chatRequests } from '../api/controllers/chat';
+import { pendingRequests as completionRequests } from '../api/controllers/completions';
+import { pendingRequests as embeddingsRequests } from '../api/controllers/embeddings';
+import { pendingRequests as modelsRequests } from '../api/controllers/models';
+
 const logger = createLogger('message-handler');
 
 // Define extended WebSocket type
@@ -210,7 +216,47 @@ function handleStreamChunk(message: any): void {
     timestamp: new Date().toISOString(),
   });
 
-  // Forward to the appropriate response processor based on the request type
+  // Check if request is being tracked in any of the controllers
+  let requestHandler = null;
+  let requestType = null;
+
+  // Check chat requests
+  if (chatRequests.has(requestId)) {
+    const request = chatRequests.get(requestId);
+    requestHandler = processChatResponse;
+    requestType = 'chat';
+    logger.debug(`Found tracked chat request for ${requestId}`);
+  }
+  // Check completion requests
+  else if (completionRequests.has(requestId)) {
+    const request = completionRequests.get(requestId);
+    requestHandler = processCompletionResponse;
+    requestType = 'completion';
+    logger.debug(`Found tracked completion request for ${requestId}`);
+  }
+  // Check embeddings requests
+  else if (embeddingsRequests.has(requestId)) {
+    const request = embeddingsRequests.get(requestId);
+    requestHandler = processEmbeddingsResponse;
+    requestType = 'embeddings';
+    logger.debug(`Found tracked embeddings request for ${requestId}`);
+  }
+  // Check models requests
+  else if (modelsRequests.has(requestId)) {
+    const request = modelsRequests.get(requestId);
+    requestHandler = processModelsResponse;
+    requestType = 'models';
+    logger.debug(`Found tracked models request for ${requestId}`);
+  }
+
+  // If we found the request in our tracking system, use its handler
+  if (requestHandler) {
+    logger.debug(`Using stored handler for request ${requestId} of type ${requestType}`);
+    requestHandler({ requestId, data, stream: true });
+    return;
+  }
+
+  // Fall back to prefix-based routing if no tracked request or no handler found
   try {
     if (requestId.startsWith('chat_')) {
       logger.debug(`Processing chat stream chunk for request ${requestId}`);
@@ -218,6 +264,35 @@ function handleStreamChunk(message: any): void {
     } else if (requestId.startsWith('completion_')) {
       logger.debug(`Processing completion stream chunk for request ${requestId}`);
       processCompletionResponse({ requestId, data, stream: true });
+    } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      // For UUID-style requests, inspect the data to determine the most appropriate handler
+      logger.debug(`Processing UUID-style request ID stream chunk: ${requestId}`);
+
+      // Default to chat handler, but examine content to determine correct handler
+      let dataObj;
+      try {
+        // If data is a string, try to parse it
+        dataObj = typeof data === 'string' ? JSON.parse(data) : data;
+
+        // Look for embeddings-specific fields
+        if (dataObj && Array.isArray(dataObj.data) && dataObj.data[0]?.embedding) {
+          // This appears to be embeddings data
+          logger.debug(`UUID request ${requestId} identified as embeddings`);
+          processEmbeddingsResponse({ requestId, data, stream: true });
+        } else {
+          // Default to chat for other formats
+          logger.debug(`UUID request ${requestId} using default chat handler`);
+          processChatResponse({ requestId, data, stream: true });
+        }
+      } catch (parseError: unknown) {
+        // If we can't parse it, default to chat handler
+        logger.debug(
+          `Unable to parse UUID request ${requestId} data, using default handler: ${
+            parseError instanceof Error ? parseError.message : String(parseError)
+          }`
+        );
+        processChatResponse({ requestId, data, stream: true });
+      }
     } else {
       logger.warn(`Unknown request type for stream chunk: ${requestId}`);
     }
@@ -246,6 +321,47 @@ function handleStreamEnd(message: any): void {
     timestamp: new Date().toISOString(),
   });
 
+  // Check if request is being tracked in any of the controllers
+  let requestHandler = null;
+  let requestType = null;
+
+  // Check chat requests
+  if (chatRequests.has(requestId)) {
+    const request = chatRequests.get(requestId);
+    requestHandler = processChatResponse;
+    requestType = 'chat';
+    logger.debug(`Found tracked chat request for ${requestId}`);
+  }
+  // Check completion requests
+  else if (completionRequests.has(requestId)) {
+    const request = completionRequests.get(requestId);
+    requestHandler = processCompletionResponse;
+    requestType = 'completion';
+    logger.debug(`Found tracked completion request for ${requestId}`);
+  }
+  // Check embeddings requests
+  else if (embeddingsRequests.has(requestId)) {
+    const request = embeddingsRequests.get(requestId);
+    requestHandler = processEmbeddingsResponse;
+    requestType = 'embeddings';
+    logger.debug(`Found tracked embeddings request for ${requestId}`);
+  }
+  // Check models requests
+  else if (modelsRequests.has(requestId)) {
+    const request = modelsRequests.get(requestId);
+    requestHandler = processModelsResponse;
+    requestType = 'models';
+    logger.debug(`Found tracked models request for ${requestId}`);
+  }
+
+  // If we found the request in our tracking system, use its handler
+  if (requestHandler) {
+    logger.debug(`Using stored handler for request ${requestId} of type ${requestType}`);
+    requestHandler({ requestId, streamEnd: true });
+    return;
+  }
+
+  // Fall back to prefix-based routing if no tracked request or no handler found
   try {
     // Notify the appropriate processor that the stream has ended
     if (requestId.startsWith('chat_')) {
@@ -254,6 +370,12 @@ function handleStreamEnd(message: any): void {
     } else if (requestId.startsWith('completion_')) {
       logger.debug(`Processing completion stream end for request ${requestId}`);
       processCompletionResponse({ requestId, streamEnd: true });
+    } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      // For UUID-style requests, default to chat handler
+      logger.debug(`Processing UUID-style request ID stream end: ${requestId}`);
+      // Since we can't examine the data content on stream end, we use the chat handler as default
+      // This matches what most UUID requests are likely to be
+      processChatResponse({ requestId, streamEnd: true });
     } else {
       logger.warn(`Unknown request type for stream end: ${requestId}`);
     }

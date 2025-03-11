@@ -7,8 +7,10 @@ import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('chat-controller');
 
-// Request tracking map to route responses back to the correct HTTP client
-const pendingRequests = new Map();
+// Track pending requests
+const pendingRequests = new Map<string, any>();
+// Export pendingRequests for use in other modules
+export { pendingRequests };
 
 /**
  * Handle chat completion requests (non-streaming)
@@ -34,6 +36,8 @@ export async function chatCompletionHandler(
       pendingRequests.set(requestId, {
         resolve,
         reject,
+        type: 'chat',
+        handler: processChatResponse,
         timeout: setTimeout(() => {
           pendingRequests.delete(requestId);
           reject(new ApiError(504, 'Request timeout'));
@@ -106,6 +110,8 @@ export async function chatCompletionStreamHandler(
     // Store the request handlers
     pendingRequests.set(requestId, {
       handleStream,
+      type: 'chat',
+      handler: processChatResponse,
       timeout: setTimeout(() => {
         pendingRequests.delete(requestId);
         res.write('data: [ERROR] Request timeout\n\n');

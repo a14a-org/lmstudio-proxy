@@ -7,8 +7,10 @@ import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('embeddings-controller');
 
-// Request tracking map to route responses back to the correct HTTP client
-const pendingRequests = new Map();
+// Track pending requests
+const pendingRequests = new Map<string, any>();
+// Export pendingRequests for use in other modules
+export { pendingRequests };
 
 /**
  * Handle embeddings requests
@@ -34,6 +36,8 @@ export async function embeddingsHandler(
       pendingRequests.set(requestId, {
         resolve,
         reject,
+        type: 'embeddings',
+        handler: processEmbeddingsResponse,
         timeout: setTimeout(() => {
           pendingRequests.delete(requestId);
           reject(new ApiError(504, 'Request timeout'));
