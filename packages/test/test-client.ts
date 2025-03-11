@@ -9,6 +9,8 @@ import {
   ModelsResponseMessage,
   ChatRequestMessage,
   ChatResponseMessage,
+  StreamChunkMessage,
+  StreamEndMessage,
 } from '@lmstudio-proxy/common';
 
 // Configuration
@@ -27,6 +29,15 @@ const pendingRequests = new Map<
     type: MessageType;
     resolve: (value: any) => void;
     reject: (error: Error) => void;
+  }
+>();
+
+// Add data structure for tracking streaming responses
+const streamingResponses = new Map<
+  string,
+  {
+    chunks: string[];
+    startTime: number;
   }
 >();
 
@@ -99,6 +110,12 @@ function handleMessage(data: WebSocket.Data): void {
         break;
       case MessageType.PONG:
         log('Received pong');
+        break;
+      case MessageType.STREAM_CHUNK:
+        handleStreamChunk(message as StreamChunkMessage);
+        break;
+      case MessageType.STREAM_END:
+        handleStreamEnd(message as StreamEndMessage);
         break;
       default:
         handleResponse(message);
@@ -220,6 +237,62 @@ async function runTests(): Promise<void> {
     console.log('\nTEST 3: Ping-Pong');
     send(createMessage(MessageType.PING, {}));
 
+    // Test 4: Test streaming (this will send direct stream messages for debugging)
+    console.log('\nTEST 4: Test streaming');
+
+    // Create a test stream chunk
+    const streamRequestId = `test_stream_${Date.now()}`;
+    console.log(`Sending test stream chunk (requestId: ${streamRequestId})`);
+
+    // Register a pending request to receive the stream
+    const streamPromise = new Promise((resolve, reject) => {
+      pendingRequests.set(streamRequestId, {
+        timestamp: Date.now(),
+        type: MessageType.CHAT_REQUEST, // Pretend this is a chat request
+        resolve,
+        reject,
+      });
+    });
+
+    // Send a test stream chunk
+    const chunkMessage = createMessage<StreamChunkMessage>(MessageType.STREAM_CHUNK, {
+      requestId: streamRequestId,
+      data: JSON.stringify({
+        id: `chatcmpl-${streamRequestId}`,
+        object: 'chat.completion.chunk',
+        created: Date.now(),
+        model: 'test-model',
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: 'This is a test streaming response!',
+            },
+            finish_reason: null,
+          },
+        ],
+      }),
+    });
+
+    // Explicitly set type as string for serialization
+    (chunkMessage as any).type = String(MessageType.STREAM_CHUNK);
+    send(chunkMessage);
+
+    // Send a stream end message after a delay
+    setTimeout(() => {
+      console.log(`Sending test stream end (requestId: ${streamRequestId})`);
+      const endMessage = createMessage<StreamEndMessage>(MessageType.STREAM_END, {
+        requestId: streamRequestId,
+      });
+      // Explicitly set type as string for serialization
+      (endMessage as any).type = String(MessageType.STREAM_END);
+      send(endMessage);
+    }, 1000);
+
+    // Wait for the stream to complete
+    const streamResult = await streamPromise;
+    console.log('Stream test complete:', JSON.stringify(streamResult, null, 2));
+
     console.log('\n=== Tests completed ===\n');
   } catch (error) {
     console.error('Error running tests:', error);
@@ -303,3 +376,107 @@ console.log('LM Studio Proxy Test Client');
 console.log(`Server URL: ${CONFIG.serverUrl}`);
 console.log(`Client ID: ${CONFIG.clientId}`);
 connect();
+
+// Add handlers for stream messages
+function handleStreamChunk(message: StreamChunkMessage): void {
+  const { requestId, data } = message;
+  log(`Received stream chunk for request: ${requestId}`);
+
+  // Initialize streaming response if first chunk
+  if (!streamingResponses.has(requestId)) {
+    streamingResponses.set(requestId, {
+      chunks: [],
+      startTime: Date.now(),
+    });
+    log(`Started collecting stream for request: ${requestId}`);
+  }
+
+  // Store the chunk
+  const streamingResponse = streamingResponses.get(requestId)!;
+  streamingResponse.chunks.push(data);
+
+  // Try to parse and log the data
+  try {
+    const parsedData = JSON.parse(data);
+    log(`Stream chunk data (parsed): ${JSON.stringify(parsedData, null, 2)}`);
+  } catch (error) {
+    log(`Stream chunk contains non-JSON data (length: ${data.length})`);
+    log(`Data preview: ${data.substring(0, 100)}${data.length > 100 ? '...' : ''}`);
+  }
+
+  // Log information about the pending request
+  const pendingRequest = pendingRequests.get(requestId);
+  if (pendingRequest) {
+    log(`Received chunk for pending request: ${requestId} (type: ${pendingRequest.type})`);
+  } else {
+    log(`Warning: No pending request found for stream chunk: ${requestId}`);
+  }
+}
+
+function handleStreamEnd(message: StreamEndMessage): void {
+  const { requestId } = message;
+  log(`Received stream end for request: ${requestId}`);
+
+  const streamingResponse = streamingResponses.get(requestId);
+  if (!streamingResponse) {
+    log(`Warning: Received stream end for unknown stream: ${requestId}`);
+    return;
+  }
+
+  // Log stream completion statistics
+  const { chunks, startTime } = streamingResponse;
+  const totalChunks = chunks.length;
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const duration = Date.now() - startTime;
+
+  log(`Stream complete for request ${requestId}:`);
+  log(`- Total chunks: ${totalChunks}`);
+  log(`- Total data length: ${totalLength} characters`);
+  log(`- Duration: ${duration}ms`);
+
+  // Try to combine and parse the data
+  try {
+    const combinedData = chunks.join('');
+    log(
+      `Combined data (first 200 chars): ${combinedData.substring(0, 200)}${
+        combinedData.length > 200 ? '...' : ''
+      }`
+    );
+
+    // If the combined data is valid JSON, log it in a structured way
+    try {
+      const parsedData = JSON.parse(combinedData);
+      log(`Parsed combined data: ${JSON.stringify(parsedData, null, 2)}`);
+    } catch {
+      log(`Combined data is not valid JSON`);
+    }
+  } catch (error) {
+    log(`Error processing combined stream data: ${error}`);
+  }
+
+  // Clean up the streaming data
+  streamingResponses.delete(requestId);
+
+  // Now resolve the pending request
+  const pendingRequest = pendingRequests.get(requestId);
+  if (pendingRequest) {
+    log(`Resolving request: ${requestId} (type: ${pendingRequest.type})`);
+    pendingRequests.delete(requestId);
+
+    // Create a "complete" response with the accumulated data
+    const completeResponse = {
+      ...message,
+      data: chunks.join(''),
+      streamingData: {
+        chunks,
+        chunkCount: chunks.length,
+        totalLength,
+        duration,
+      },
+    };
+
+    pendingRequest.resolve(completeResponse);
+  } else {
+    log(`Warning: No pending request found for stream end: ${requestId}`);
+  }
+}

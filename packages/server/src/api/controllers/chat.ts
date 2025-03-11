@@ -155,7 +155,16 @@ export async function chatCompletionStreamHandler(
  * This is called from the message handler when a response is received
  */
 export function processChatResponse(message: any): void {
-  const { requestId, data, error, stream } = message;
+  const { requestId, data, error, stream, streamEnd } = message;
+
+  logger.debug(`Processing chat response for request ${requestId}`, {
+    requestId,
+    hasData: !!data,
+    hasError: !!error,
+    isStream: !!stream,
+    isStreamEnd: !!streamEnd,
+    timestamp: new Date().toISOString(),
+  });
 
   if (!pendingRequests.has(requestId)) {
     logger.warn(`Received response for unknown request: ${requestId}`);
@@ -175,6 +184,18 @@ export function processChatResponse(message: any): void {
       clearTimeout(request.timeout);
       pendingRequests.delete(requestId);
     }
+    return;
+  }
+
+  if (streamEnd) {
+    // Handle stream end - send final message and clean up
+    logger.debug(`Processing stream end for request ${requestId}`);
+    request.handleStream({
+      id: `chatcmpl-${requestId}`,
+      choices: [{ finish_reason: 'stop' }],
+    });
+    clearTimeout(request.timeout);
+    pendingRequests.delete(requestId);
     return;
   }
 

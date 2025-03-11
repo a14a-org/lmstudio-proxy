@@ -7,6 +7,8 @@ import {
   AuthResultMessage,
   RequestMessage,
   ErrorMessage,
+  StreamChunkMessage,
+  StreamEndMessage,
   createMessage,
   safeJsonParse,
   WS_PING_INTERVAL,
@@ -125,7 +127,13 @@ export class ProxyConnection extends EventEmitter {
         return;
       }
 
-      logger.debug(`Received message of type: ${message.type}`);
+      logger.debug(`Received message of type: ${message.type}`, {
+        messageType: message.type,
+        requestId: message.requestId,
+        timestamp: new Date().toISOString(),
+        message: JSON.stringify(message),
+        availableMessageTypes: Object.values(MessageType),
+      });
 
       if (message.type === MessageType.AUTH_RESULT) {
         this.handleAuthMessage(message as AuthResultMessage);
@@ -138,9 +146,36 @@ export class ProxyConnection extends EventEmitter {
         this.handleRequestMessage(message as RequestMessage);
       } else if (message.type === MessageType.ERROR) {
         this.handleErrorMessage(message as ErrorMessage);
+      } else if (message.type === MessageType.STREAM_CHUNK) {
+        logger.debug(`Processing stream chunk for request ${message.requestId}`, {
+          requestId: message.requestId,
+          data: (message as StreamChunkMessage).data,
+          timestamp: new Date().toISOString(),
+        });
+        const stream = this.activeStreams.get(message.requestId!);
+        if (stream) {
+          stream.write((message as StreamChunkMessage).data);
+        } else {
+          logger.warn(`No active stream found for request ${message.requestId}`);
+        }
+      } else if (message.type === MessageType.STREAM_END) {
+        logger.debug(`Processing stream end for request ${message.requestId}`, {
+          requestId: message.requestId,
+          timestamp: new Date().toISOString(),
+        });
+        const stream = this.activeStreams.get(message.requestId!);
+        if (stream) {
+          stream.end();
+          this.activeStreams.delete(message.requestId!);
+        } else {
+          logger.warn(`No active stream found for request ${message.requestId}`);
+        }
       }
     } catch (error) {
-      logger.error('Error handling message:', error);
+      logger.error('Error handling message:', {
+        error,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -258,7 +293,7 @@ export class ProxyConnection extends EventEmitter {
         messageType: message.type,
         requestId,
         endpoint,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       if (message.stream) {
@@ -289,7 +324,7 @@ export class ProxyConnection extends EventEmitter {
           responseType,
           requestId,
           endpoint,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         // Send response back to server
@@ -305,7 +340,7 @@ export class ProxyConnection extends EventEmitter {
         error,
         requestId,
         endpoint: message.type,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Send error response
@@ -328,9 +363,16 @@ export class ProxyConnection extends EventEmitter {
   ): Promise<void> {
     try {
       let stream: PassThrough;
+      let streamingFailed = false;
 
       // Remove leading slash if present for comparison
       const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+      logger.debug(`Setting up streaming request`, {
+        requestId,
+        endpoint: normalizedEndpoint,
+        timestamp: new Date().toISOString(),
+      });
 
       if (normalizedEndpoint === 'chat/completions') {
         stream = await this.lmStudioClient.streamChatCompletion(payload);
@@ -342,32 +384,117 @@ export class ProxyConnection extends EventEmitter {
 
       // Store the stream for potential cleanup later
       this.activeStreams.set(requestId, stream);
+      logger.debug(`Stream stored for request ${requestId}`, {
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
 
       // Process the stream data
       stream.on('data', chunk => {
-        const data = chunk.toString();
+        try {
+          const data = chunk.toString();
+          logger.debug(`Stream data received for request ${requestId}`, {
+            requestId,
+            dataLength: data.length,
+            dataPreview: data.substring(0, 50) + (data.length > 50 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+          });
 
-        // Send the chunk to the server
-        this.send(
-          createMessage(MessageType.STREAM_CHUNK, {
+          // Send the chunk to the server
+          const messageData = {
             requestId,
             data,
-          })
-        );
+          };
+
+          // Create message with proper string type
+          const message = createMessage(MessageType.STREAM_CHUNK, messageData);
+
+          // Explicit type conversion to ensure proper serialization
+          const messageType = String(MessageType.STREAM_CHUNK);
+          (message as any).type = messageType;
+
+          logger.debug(`Sending stream chunk message to server for request ${requestId}`, {
+            requestId,
+            messageType: message.type,
+            messageTypeRaw: MessageType.STREAM_CHUNK,
+            messageTypeAsString: messageType,
+            messageTypeType: typeof message.type,
+            timestamp: new Date().toISOString(),
+            messageKeys: Object.keys(message),
+            messageAsJSON: JSON.stringify(message).substring(0, 100) + '...',
+          });
+
+          this.send(message);
+        } catch (error) {
+          if (!streamingFailed) {
+            streamingFailed = true;
+            logger.error(
+              `Error processing stream chunk for request ${requestId}, falling back to non-streaming mode`,
+              {
+                error: error instanceof Error ? error.message : String(error),
+                requestId,
+                timestamp: new Date().toISOString(),
+              }
+            );
+
+            // Cancel the stream
+            stream.destroy();
+            this.activeStreams.delete(requestId);
+
+            // Fall back to non-streaming mode
+            this.handleNonStreamingRequest(requestId, endpoint, payload).catch(fallbackError => {
+              logger.error(`Fallback request also failed for request ${requestId}`, {
+                error:
+                  fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+                requestId,
+                timestamp: new Date().toISOString(),
+              });
+            });
+          }
+        }
       });
 
       // Handle stream end
       stream.on('end', () => {
-        // Send stream end message
-        this.send(createMessage(MessageType.STREAM_END, { requestId }));
+        if (!streamingFailed) {
+          logger.debug(`Stream ended for request ${requestId}`, {
+            requestId,
+            timestamp: new Date().toISOString(),
+          });
 
-        // Remove from active streams
-        this.activeStreams.delete(requestId);
+          // Create stream end message with proper type
+          const endMessageData = { requestId };
+          const endMessage = createMessage(MessageType.STREAM_END, endMessageData);
+
+          // Explicit type conversion to ensure proper serialization
+          const endMessageType = String(MessageType.STREAM_END);
+          (endMessage as any).type = endMessageType;
+
+          logger.debug(`Sending stream end message to server for request ${requestId}`, {
+            requestId,
+            messageType: endMessage.type,
+            messageTypeRaw: MessageType.STREAM_END,
+            messageTypeAsString: endMessageType,
+            messageTypeType: typeof endMessage.type,
+            timestamp: new Date().toISOString(),
+            messageKeys: Object.keys(endMessage),
+            messageAsJSON: JSON.stringify(endMessage).substring(0, 100) + '...',
+          });
+
+          this.send(endMessage);
+
+          // Remove from active streams
+          this.activeStreams.delete(requestId);
+        }
       });
 
       // Handle stream errors
       stream.on('error', error => {
-        logger.error(`Stream error for request ${requestId}`, error);
+        logger.error(`Stream error for request ${requestId}`, {
+          error,
+          requestId,
+          timestamp: new Date().toISOString(),
+        });
 
         // Send error message
         this.send(
@@ -381,7 +508,11 @@ export class ProxyConnection extends EventEmitter {
         this.activeStreams.delete(requestId);
       });
     } catch (error) {
-      logger.error(`Error setting up stream for request ${requestId}`, error);
+      logger.error(`Error setting up stream for request ${requestId}`, {
+        error,
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
 
       // Send error message
       this.send(
@@ -413,5 +544,215 @@ export class ProxyConnection extends EventEmitter {
    */
   public isAuthenticated(): boolean {
     return this.authenticated;
+  }
+
+  private async handleNonStreamingRequest(
+    requestId: string,
+    endpoint: string,
+    payload: any
+  ): Promise<void> {
+    try {
+      logger.debug(`Falling back to non-streaming request for ${requestId}`, {
+        requestId,
+        endpoint,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Create a non-streaming payload by setting stream to false
+      const nonStreamingPayload = { ...payload, stream: false };
+
+      // Handle based on endpoint
+      const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+      logger.debug(`Making non-streaming request to ${normalizedEndpoint}`, {
+        requestId,
+        endpoint: normalizedEndpoint,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Use makeRequest method which handles all non-streaming requests
+      const response = await this.lmStudioClient.makeRequest(
+        `/${normalizedEndpoint}`,
+        nonStreamingPayload
+      );
+
+      // Send the response based on endpoint type
+      if (normalizedEndpoint === 'chat/completions') {
+        this.send(
+          createMessage(MessageType.CHAT_RESPONSE, {
+            requestId,
+            response,
+          })
+        );
+      } else if (normalizedEndpoint === 'completions') {
+        this.send(
+          createMessage(MessageType.COMPLETION_RESPONSE, {
+            requestId,
+            response,
+          })
+        );
+      }
+    } catch (error) {
+      logger.error(`Error in non-streaming fallback for request ${requestId}`, {
+        error: error instanceof Error ? error.message : String(error),
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Send error message
+      this.send(
+        createMessage(MessageType.ERROR, {
+          requestId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      );
+    }
+  }
+
+  /**
+   * Test stream chunk handling
+   * This is a debugging method to test stream handling directly
+   */
+  public testStreamMessage(requestId = 'test_stream_'): void {
+    if (!this.isConnected()) {
+      logger.error('Cannot test stream messages: not connected');
+      return;
+    }
+
+    logger.info('Sending test stream chunk message', {
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Create test stream chunk message
+    const testMessage = {
+      type: MessageType.STREAM_CHUNK,
+      requestId,
+      data: JSON.stringify({
+        id: `chatcmpl-${requestId}`,
+        object: 'chat.completion.chunk',
+        created: Date.now(),
+        model: 'test-model',
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: 'Test streaming content',
+            },
+            finish_reason: null,
+          },
+        ],
+      }),
+      timestamp: Date.now(),
+    } as BaseMessage;
+
+    // Explicitly set type as string for serialization
+    (testMessage as any).type = String(MessageType.STREAM_CHUNK);
+
+    logger.debug('Test stream message details:', {
+      messageType: testMessage.type,
+      messageTypeStr: String(testMessage.type),
+      messageTypeValue: MessageType.STREAM_CHUNK,
+      messageTypeValueString: String(MessageType.STREAM_CHUNK),
+      messageTypeKeys: Object.keys(MessageType),
+      messageTypeType: typeof testMessage.type,
+      messageTypeEquals: testMessage.type === String(MessageType.STREAM_CHUNK),
+      timestamp: new Date().toISOString(),
+    });
+
+    // Send the test message
+    this.send(testMessage);
+
+    // After a delay, send a stream end message
+    setTimeout(() => {
+      logger.info('Sending test stream end message', {
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+
+      const endMessage = {
+        type: MessageType.STREAM_END,
+        requestId,
+        timestamp: Date.now(),
+      } as BaseMessage;
+
+      // Explicitly set type as string for serialization
+      (endMessage as any).type = String(MessageType.STREAM_END);
+
+      logger.debug('Test stream end message details:', {
+        messageType: endMessage.type,
+        messageTypeStr: String(endMessage.type),
+        messageTypeValue: MessageType.STREAM_END,
+        messageTypeValueString: String(MessageType.STREAM_END),
+        messageTypeType: typeof endMessage.type,
+        messageTypeEquals: endMessage.type === String(MessageType.STREAM_END),
+        timestamp: new Date().toISOString(),
+      });
+
+      this.send(endMessage);
+    }, 1000);
+  }
+
+  /**
+   * Test stream end handling
+   * This is a debugging method to test stream end directly
+   */
+  public testStreamEndMessage(requestId = 'test_stream_'): void {
+    if (!this.isConnected()) {
+      logger.error('Cannot test stream end messages: not connected');
+      return;
+    }
+
+    logger.info('Sending test stream end message', {
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Create test stream end message
+    const endMessage = {
+      type: MessageType.STREAM_END,
+      requestId,
+      timestamp: Date.now(),
+    } as BaseMessage;
+
+    // Explicitly set type as string for serialization
+    const endMessageType = String(MessageType.STREAM_END);
+    (endMessage as any).type = endMessageType;
+
+    logger.debug('Test stream end message details:', {
+      messageType: endMessage.type,
+      messageTypeRaw: MessageType.STREAM_END,
+      messageTypeAsString: endMessageType,
+      messageTypeType: typeof endMessage.type,
+      messageTypeKeys: Object.keys(MessageType),
+      timestamp: new Date().toISOString(),
+      messageAsJSON: JSON.stringify(endMessage),
+    });
+
+    // Send the test message
+    this.send(endMessage);
+  }
+
+  /**
+   * Test the full streaming sequence with a chunk followed by an end
+   */
+  public testStreamSequence(requestId = 'test_stream_sequence_'): void {
+    if (!this.isConnected()) {
+      logger.error('Cannot test stream sequence: not connected');
+      return;
+    }
+
+    logger.info('Starting test stream sequence', {
+      requestId,
+      timestamp: new Date().toISOString(),
+    });
+
+    // First send a stream chunk
+    this.testStreamMessage(requestId);
+
+    // Then send stream end after a short delay
+    setTimeout(() => {
+      this.testStreamEndMessage(requestId);
+    }, 500);
   }
 }

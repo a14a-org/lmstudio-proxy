@@ -1,6 +1,7 @@
 import express from 'express';
 import { chatCompletionHandler, chatCompletionStreamHandler } from '../controllers/chat';
 import { createLogger } from '../../utils/logger';
+import { config } from '../../config';
 
 const logger = createLogger('chat-routes');
 const router = express.Router();
@@ -11,12 +12,21 @@ router.post('/completions', async (req, res, next) => {
     logger.debug('Received chat completion request', {
       model: req.body.model,
       stream: req.body.stream === true,
+      streamingEnabled: config.enableStreaming,
     });
 
-    // Check if streaming is requested
-    const stream = req.body.stream === true;
+    // Check if streaming is requested and enabled
+    const streamRequested = req.body.stream === true;
+    const streamingEnabled = config.enableStreaming;
 
-    if (stream) {
+    if (streamRequested && !streamingEnabled) {
+      logger.info(
+        'Streaming requested but disabled by configuration - falling back to non-streaming'
+      );
+      // Force non-streaming mode by setting stream to false
+      req.body.stream = false;
+      return chatCompletionHandler(req, res, next);
+    } else if (streamRequested && streamingEnabled) {
       // Handle streaming response
       return chatCompletionStreamHandler(req, res, next);
     } else {

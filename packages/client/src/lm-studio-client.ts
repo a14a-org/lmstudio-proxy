@@ -19,7 +19,7 @@ export class LMStudioClient {
       host: config.lmStudioHost,
       port: config.lmStudioPort,
       apiPath: LM_STUDIO_API_PATH,
-      baseUrl: this.baseUrl
+      baseUrl: this.baseUrl,
     });
 
     // Create axios instance for non-streaming requests with increased timeout
@@ -43,28 +43,28 @@ export class LMStudioClient {
         endpoint,
         method: endpoint === API_ENDPOINTS.MODELS ? 'GET' : 'POST',
         payload,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
-      logger.debug(`Making request to ${endpoint}`, { 
+      logger.debug(`Making request to ${endpoint}`, {
         endpoint,
         baseUrl: this.baseUrl,
         fullUrl: `${this.baseUrl}${endpoint}`,
-        payload 
+        payload,
       });
 
       // Special handling for models endpoint - should be a GET request
       if (endpoint === API_ENDPOINTS.MODELS) {
         logger.debug('Making GET request to models endpoint');
         const response = await this.axiosInstance.get(endpoint, {
-          timeout: 300000 // 5 minutes timeout for models request
+          timeout: 300000, // 5 minutes timeout for models request
         });
         logger.info('Received response from LM Studio models endpoint:', {
           status: response.status,
           statusText: response.statusText,
           headers: response.headers,
           data: response.data,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         return response.data;
       }
@@ -72,14 +72,14 @@ export class LMStudioClient {
       // For all other endpoints, use POST
       logger.debug('Making POST request to endpoint');
       const response = await this.axiosInstance.post(endpoint, payload, {
-        timeout: 300000 // 5 minutes timeout for other requests
+        timeout: 300000, // 5 minutes timeout for other requests
       });
       logger.info('Received response from LM Studio endpoint:', {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
         data: response.data,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return response.data;
     } catch (error) {
@@ -89,7 +89,7 @@ export class LMStudioClient {
         baseUrl: this.baseUrl,
         fullUrl: `${this.baseUrl}${endpoint}`,
         payload,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       throw error;
     }
@@ -104,7 +104,7 @@ export class LMStudioClient {
       requestId,
       endpoint: API_ENDPOINTS.CHAT_COMPLETIONS,
       payload,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     return this.streamRequest(API_ENDPOINTS.CHAT_COMPLETIONS, payload, requestId);
   }
@@ -118,7 +118,7 @@ export class LMStudioClient {
       requestId,
       endpoint: API_ENDPOINTS.COMPLETIONS,
       payload,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     return this.streamRequest(API_ENDPOINTS.COMPLETIONS, payload, requestId);
   }
@@ -126,7 +126,11 @@ export class LMStudioClient {
   /**
    * Make a streaming request to LM Studio
    */
-  private async streamRequest(endpoint: string, payload: any, requestId: string): Promise<PassThrough> {
+  private async streamRequest(
+    endpoint: string,
+    payload: any,
+    requestId: string
+  ): Promise<PassThrough> {
     const outputStream = new PassThrough();
 
     try {
@@ -134,7 +138,7 @@ export class LMStudioClient {
         endpoint,
         baseUrl: this.baseUrl,
         fullUrl: `${this.baseUrl}${endpoint}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Ensure stream is set to true
@@ -156,7 +160,7 @@ export class LMStudioClient {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Pipe the response stream to our output stream
@@ -164,10 +168,50 @@ export class LMStudioClient {
 
       // Handle data chunks
       response.data.on('data', (chunk: Buffer) => {
-        logger.debug(`Stream ${requestId} received chunk:`, {
-          chunk: chunk.toString(),
-          timestamp: new Date().toISOString()
+        const chunkStr = chunk.toString();
+        logger.debug(`Stream ${requestId} received chunk (raw):`, {
+          chunkLength: chunkStr.length,
+          chunk: chunkStr,
+          timestamp: new Date().toISOString(),
         });
+
+        // Attempt to parse SSE format
+        try {
+          // Split by double newlines to get SSE events
+          const events = chunkStr.split('\n\n').filter(Boolean);
+
+          for (const event of events) {
+            // Only process data events
+            if (event.startsWith('data: ')) {
+              // Extract the JSON payload
+              const dataContent = event.substring(6); // Remove 'data: ' prefix
+
+              if (dataContent === '[DONE]') {
+                logger.debug(`Stream ${requestId} received [DONE] event`);
+              } else {
+                try {
+                  // Parse the JSON data
+                  const parsedData = JSON.parse(dataContent);
+                  logger.debug(`Stream ${requestId} parsed data:`, {
+                    parsedData,
+                    timestamp: new Date().toISOString(),
+                  });
+                } catch (parseError) {
+                  logger.debug(`Stream ${requestId} received non-JSON data:`, {
+                    content: dataContent,
+                    error: parseError instanceof Error ? parseError.message : String(parseError),
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              }
+            }
+          }
+        } catch (parseError) {
+          logger.debug(`Stream ${requestId} failed to parse event format:`, {
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+            timestamp: new Date().toISOString(),
+          });
+        }
       });
 
       // Handle errors
@@ -176,7 +220,7 @@ export class LMStudioClient {
           error: err,
           requestId,
           endpoint,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         outputStream.emit('error', err);
         outputStream.end();
@@ -186,7 +230,7 @@ export class LMStudioClient {
       response.data.on('end', () => {
         logger.info(`Stream ${requestId} completed`, {
           endpoint,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       });
     } catch (error) {
@@ -194,7 +238,7 @@ export class LMStudioClient {
         error,
         requestId,
         endpoint,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       outputStream.emit('error', error);
       outputStream.end();

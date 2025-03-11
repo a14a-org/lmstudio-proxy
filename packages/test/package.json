@@ -6,7 +6,8 @@
     "build": "echo 'No build needed for test package'",
     "test": "ts-node run-tests.ts",
     "test:server": "ts-node test-server.ts",
-    "test:client": "ts-node test-client.ts"
+    "test:client": "ts-node test-client.ts",
+    "test:stream": "ts-node stream-test.ts"
   },
   "dependencies": {
     "@lmstudio-proxy/common": "^0.1.0",

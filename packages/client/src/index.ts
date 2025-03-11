@@ -65,6 +65,36 @@ async function main() {
     res.send('LM Studio Proxy Client');
   });
 
+  // Debug endpoint for testing stream messages
+  app.get('/debug/test-stream', (req, res) => {
+    try {
+      // Extract optional requestId from query params
+      const requestId = (req.query.requestId as string) || `test_stream_${Date.now()}`;
+
+      logger.info(`Received test stream request with ID: ${requestId}`);
+
+      // Call the test function
+      connection.testStreamMessage(requestId);
+
+      res.json({
+        status: 'ok',
+        message: 'Test stream message sent',
+        requestId,
+      });
+    } catch (error) {
+      logger.error('Error in test stream endpoint:', {
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to send test stream message',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
   // Start HTTP server
   const server = app.listen(config.healthCheckPort, () => {
     logger.info(`Health check server running on port ${config.healthCheckPort}`);

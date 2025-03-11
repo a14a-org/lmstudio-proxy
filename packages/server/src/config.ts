@@ -21,6 +21,9 @@ export interface ServerConfig {
 
   // Logging
   logLevel: string;
+
+  // Feature flags
+  enableStreaming: boolean;
 }
 
 export const config: ServerConfig = {
@@ -40,6 +43,9 @@ export const config: ServerConfig = {
 
   // Logging
   logLevel: process.env.LOG_LEVEL || 'info',
+
+  // Feature flags - defaults to enabled
+  enableStreaming: process.env.ENABLE_STREAMING !== 'false',
 };
 
 export function validateConfig(): { valid: boolean; errors: string[] } {

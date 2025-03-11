@@ -202,6 +202,18 @@ export interface ErrorResponseMessage extends BaseMessage {
   error: any;
 }
 
+// Streaming messages
+export interface StreamChunkMessage extends BaseMessage {
+  type: MessageType.STREAM_CHUNK;
+  requestId: string;
+  data: string;
+}
+
+export interface StreamEndMessage extends BaseMessage {
+  type: MessageType.STREAM_END;
+  requestId: string;
+}
+
 // Union types for client and server messages
 export type ClientMessage =
   | AuthMessage
@@ -210,6 +222,8 @@ export type ClientMessage =
   | EmbeddingsResponseMessage
   | ModelsResponseMessage
   | ErrorResponseMessage
+  | StreamChunkMessage
+  | StreamEndMessage
   | BaseMessage;
 
 export type ServerMessage =
@@ -220,4 +234,6 @@ export type ServerMessage =
   | ModelsRequestMessage
   | CancelRequestMessage
   | ErrorMessage
+  | StreamChunkMessage
+  | StreamEndMessage
   | BaseMessage;

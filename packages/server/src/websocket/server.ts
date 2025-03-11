@@ -42,7 +42,23 @@ export function setupWebSocketServer(server: http.Server): WebSocket.Server {
     // Handle authentication and messages
     extWs.on('message', (data: WebSocket.RawData) => {
       try {
-        const message = JSON.parse(data.toString());
+        const rawMessage = data.toString();
+        logger.debug('Raw WebSocket message received:', {
+          rawMessageLength: rawMessage.length,
+          rawMessagePreview:
+            rawMessage.length > 500 ? rawMessage.substring(0, 500) + '...' : rawMessage,
+          timestamp: new Date().toISOString(),
+        });
+
+        const message = JSON.parse(rawMessage);
+
+        logger.debug('Parsed WebSocket message:', {
+          messageKeys: Object.keys(message),
+          messageType: message.type,
+          messageTypeType: typeof message.type,
+          requestId: message.requestId,
+          timestamp: new Date().toISOString(),
+        });
 
         if (!extWs.isAuthenticated) {
           // Handle authentication if not yet authenticated
@@ -52,11 +68,16 @@ export function setupWebSocketServer(server: http.Server): WebSocket.Server {
           handleMessage(extWs, message, clientManager);
         }
       } catch (error) {
-        logger.error('Error processing WebSocket message:', error);
+        logger.error('Error processing WebSocket message:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        });
         extWs.send(
           JSON.stringify({
             type: 'error',
             error: 'Invalid message format',
+            details: error instanceof Error ? error.message : String(error),
           })
         );
       }
