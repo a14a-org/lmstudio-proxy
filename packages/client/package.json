@@ -13,7 +13,7 @@
   "dependencies": {
     "@lmstudio-proxy/common": "^0.1.0",
     "axios": "^1.13.2",
-    "dotenv": "^16.0.3",
+    "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "ws": "^8.18.3"
   },
