@@ -59,6 +59,7 @@ export class ClientManager {
   /**
    * Find available clients (for load balancing or specific model support)
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public findAvailableClient(_modelId?: string): ExtendedWebSocket | undefined {
     // For now, just return the first available client
     // In a more advanced implementation, this could filter by clients

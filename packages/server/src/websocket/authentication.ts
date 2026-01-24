@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import jwt, { SignOptions, Secret } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { ClientManager } from './client-manager';
 import { createLogger } from '../utils/logger';

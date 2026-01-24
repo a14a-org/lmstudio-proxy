@@ -7,7 +7,6 @@ import {
   AuthMessage,
   AuthResultMessage,
   ModelsResponseMessage,
-  ChatRequestMessage,
   ChatResponseMessage,
   StreamChunkMessage,
   StreamEndMessage,
@@ -42,8 +41,6 @@ const streamingResponses = new Map<
 >();
 
 // Status variables
-let isConnected = false;
-let isAuthenticated = false;
 let ws: WebSocket | null = null;
 let pingInterval: NodeJS.Timeout | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
@@ -63,7 +60,6 @@ function connect(): void {
 // Handle WebSocket open event
 function handleOpen(): void {
   console.log('Connection established');
-  isConnected = true;
 
   // Send authentication message
   sendAuthentication();
@@ -130,13 +126,11 @@ function handleMessage(data: WebSocket.Data): void {
 function handleAuthResult(message: AuthResultMessage): void {
   if (message.success) {
     console.log('Successfully authenticated with server');
-    isAuthenticated = true;
 
     // Start test sequence after authentication
     runTests();
   } else {
     console.error(`Authentication failed: ${message.error}`);
-    isAuthenticated = false;
   }
 }
 
@@ -174,8 +168,6 @@ function handleResponse(message: BaseMessage): void {
 // Handle WebSocket close event
 function handleClose(code: number, reason: string): void {
   console.log(`Connection closed: ${code} - ${reason}`);
-  isConnected = false;
-  isAuthenticated = false;
 
   clearInterval(pingInterval!);
   pingInterval = null;
@@ -399,7 +391,7 @@ function handleStreamChunk(message: StreamChunkMessage): void {
   try {
     const parsedData = JSON.parse(data);
     log(`Stream chunk data (parsed): ${JSON.stringify(parsedData, null, 2)}`);
-  } catch (error) {
+  } catch {
     log(`Stream chunk contains non-JSON data (length: ${data.length})`);
     log(`Data preview: ${data.substring(0, 100)}${data.length > 100 ? '...' : ''}`);
   }

@@ -7,9 +7,11 @@ import { createLogger } from '../utils/logger';
 const logger = createLogger('auth-middleware');
 
 // Extend Express Request to include user property
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: any;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
   }
 }
 
@@ -31,7 +33,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
         const decoded = jwt.verify(token, config.jwtSecret);
         req.user = decoded;
         next();
-      } catch (error) {
+      } catch {
         logger.warn('Invalid JWT token');
         throw new ApiError(401, 'Invalid or expired token');
       }

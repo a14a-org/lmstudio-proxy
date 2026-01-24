@@ -1,12 +1,4 @@
 import WebSocket from 'ws';
-import {
-  MessageType,
-  createMessage,
-  generateRequestId,
-  BaseMessage,
-  StreamChunkMessage,
-  StreamEndMessage,
-} from '@lmstudio-proxy/common';
 
 // Configuration
 const CONFIG = {
@@ -17,8 +9,6 @@ const CONFIG = {
 };
 
 // Status variables
-let isConnected = false;
-let isAuthenticated = false;
 let ws: WebSocket | null = null;
 
 // Track test streams
@@ -45,7 +35,6 @@ function connect(): void {
 // Handle WebSocket open event
 function handleOpen(): void {
   console.log('Connection established');
-  isConnected = true;
 
   // Send authentication message
   sendAuthentication();
@@ -94,21 +83,17 @@ function handleMessage(data: WebSocket.Data): void {
 function handleAuthResult(message: any): void {
   if (message.success) {
     console.log('Successfully authenticated with server');
-    isAuthenticated = true;
 
     // Start test sequence after authentication
     setTimeout(runStreamTests, 500);
   } else {
     console.error(`Authentication failed: ${message.error}`);
-    isAuthenticated = false;
   }
 }
 
 // Handle WebSocket close event
 function handleClose(code: number, reason: string): void {
   console.log(`Connection closed: ${code} - ${reason}`);
-  isConnected = false;
-  isAuthenticated = false;
 }
 
 // Handle WebSocket error event
@@ -154,7 +139,7 @@ function handleStreamChunk(message: any): void {
     // Try to parse the data as JSON
     const parsedData = JSON.parse(data);
     console.log('Parsed data:', JSON.stringify(parsedData, null, 2));
-  } catch (error) {
+  } catch {
     console.log('Raw data (first 100 chars):', data.substring(0, 100));
   }
 }

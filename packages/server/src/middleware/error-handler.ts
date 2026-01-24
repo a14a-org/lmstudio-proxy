@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger('error-handler');
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   logger.error('API error:', err);
 

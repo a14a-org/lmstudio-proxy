@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { PassThrough } from 'stream';
 import { LM_STUDIO_API_PATH, API_ENDPOINTS } from '@lmstudio-proxy/common';
 import { config } from './config';

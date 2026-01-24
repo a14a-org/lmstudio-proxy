@@ -25,12 +25,8 @@ interface ExtendedWebSocket extends WebSocket {
 /**
  * Handle messages from authenticated clients
  */
-export function handleMessage(
-  ws: ExtendedWebSocket,
-  message: any,
-  // Using _ prefix to indicate intentionally unused parameter
-  _clientManager: ClientManager
-): void {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function handleMessage(ws: ExtendedWebSocket, message: any, _clientManager: ClientManager): void {
   if (!message.type) {
     sendError(ws, 'Invalid message format: missing type');
     return;
@@ -105,7 +101,7 @@ export function handleMessage(
 
     // Try to find matching enum by its string value
     const matchingEnum = Object.entries(MessageType).find(
-      ([key, value]) => String(value).toLowerCase().trim() === normalizedTypeLower
+      ([, value]) => String(value).toLowerCase().trim() === normalizedTypeLower
     );
 
     if (matchingEnum) {
@@ -222,28 +218,24 @@ function handleStreamChunk(message: any): void {
 
   // Check chat requests
   if (chatRequests.has(requestId)) {
-    const request = chatRequests.get(requestId);
     requestHandler = processChatResponse;
     requestType = 'chat';
     logger.debug(`Found tracked chat request for ${requestId}`);
   }
   // Check completion requests
   else if (completionRequests.has(requestId)) {
-    const request = completionRequests.get(requestId);
     requestHandler = processCompletionResponse;
     requestType = 'completion';
     logger.debug(`Found tracked completion request for ${requestId}`);
   }
   // Check embeddings requests
   else if (embeddingsRequests.has(requestId)) {
-    const request = embeddingsRequests.get(requestId);
     requestHandler = processEmbeddingsResponse;
     requestType = 'embeddings';
     logger.debug(`Found tracked embeddings request for ${requestId}`);
   }
   // Check models requests
   else if (modelsRequests.has(requestId)) {
-    const request = modelsRequests.get(requestId);
     requestHandler = processModelsResponse;
     requestType = 'models';
     logger.debug(`Found tracked models request for ${requestId}`);
@@ -327,28 +319,24 @@ function handleStreamEnd(message: any): void {
 
   // Check chat requests
   if (chatRequests.has(requestId)) {
-    const request = chatRequests.get(requestId);
     requestHandler = processChatResponse;
     requestType = 'chat';
     logger.debug(`Found tracked chat request for ${requestId}`);
   }
   // Check completion requests
   else if (completionRequests.has(requestId)) {
-    const request = completionRequests.get(requestId);
     requestHandler = processCompletionResponse;
     requestType = 'completion';
     logger.debug(`Found tracked completion request for ${requestId}`);
   }
   // Check embeddings requests
   else if (embeddingsRequests.has(requestId)) {
-    const request = embeddingsRequests.get(requestId);
     requestHandler = processEmbeddingsResponse;
     requestType = 'embeddings';
     logger.debug(`Found tracked embeddings request for ${requestId}`);
   }
   // Check models requests
   else if (modelsRequests.has(requestId)) {
-    const request = modelsRequests.get(requestId);
     requestHandler = processModelsResponse;
     requestType = 'models';
     logger.debug(`Found tracked models request for ${requestId}`);

@@ -56,7 +56,7 @@ export function validateConfig<T>(
 export function safeJsonParse<T>(data: string, defaultValue?: T): T {
   try {
     return JSON.parse(data) as T;
-  } catch (error) {
+  } catch {
     return defaultValue as T;
   }
 }

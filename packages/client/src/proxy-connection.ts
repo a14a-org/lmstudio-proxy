@@ -8,7 +8,6 @@ import {
   RequestMessage,
   ErrorMessage,
   StreamChunkMessage,
-  StreamEndMessage,
   createMessage,
   safeJsonParse,
   WS_PING_INTERVAL,
