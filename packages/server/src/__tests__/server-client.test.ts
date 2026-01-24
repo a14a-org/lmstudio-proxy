@@ -1,3 +1,9 @@
+// Set environment variables BEFORE importing modules that use config
+const testApiKey = 'test-api-key';
+process.env.API_KEY = testApiKey;
+process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.WS_PATH = '/ws';
+
 import http from 'http';
 import WebSocket from 'ws';
 import express from 'express';
@@ -10,13 +16,7 @@ describe('Server-Client Communication', () => {
   let clientSocket: WebSocket;
   const port = 9000;
   const serverUrl = `ws://localhost:${port}/ws`;
-  const testApiKey = 'test-api-key';
   const testClientId = 'test-client-123';
-
-  // Mock environment variables
-  process.env.API_KEY = testApiKey;
-  process.env.JWT_SECRET = 'test-jwt-secret';
-  process.env.WS_PATH = '/ws';
 
   beforeAll(done => {
     // Create HTTP server
@@ -65,6 +65,10 @@ describe('Server-Client Communication', () => {
       const message = JSON.parse(data.toString());
 
       if (message.type === MessageType.AUTH_RESULT) {
+        if (!message.success) {
+          done(new Error(`Auth failed: ${message.error}`));
+          return;
+        }
         expect(message.success).toBe(true);
         expect(message.token).toBeDefined();
         done();
@@ -130,17 +134,17 @@ describe('Server-Client Communication', () => {
     );
 
     // Handle pong response
-    const messageHandler = (data: WebSocket.MessageEvent) => {
-      const message = JSON.parse(data.data.toString());
+    const messageHandler = (data: WebSocket.RawData) => {
+      const message = JSON.parse(data.toString());
 
       if (message.type === MessageType.PONG) {
         // Remove event listener
-        clientSocket.removeEventListener('message', messageHandler);
+        clientSocket.off('message', messageHandler);
         done();
       }
     };
 
     // Add message listener
-    clientSocket.addEventListener('message', messageHandler);
+    clientSocket.on('message', messageHandler);
   });
 });

@@ -1,3 +1,9 @@
+// Set environment variables BEFORE importing modules that use config
+const testApiKey = 'test-api-key';
+process.env.API_KEY = testApiKey;
+process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.WS_PATH = '/ws';
+
 import http from 'http';
 import express from 'express';
 import request from 'supertest';
@@ -14,14 +20,8 @@ describe('API Endpoints', () => {
   let clientSocket: WebSocket;
   const port = 9001;
   const wsServerUrl = `ws://localhost:${port}/ws`;
-  const testApiKey = 'test-api-key';
   const testClientId = 'test-client-123';
   let authToken: string;
-
-  // Mock environment variables
-  process.env.API_KEY = testApiKey;
-  process.env.JWT_SECRET = 'test-jwt-secret';
-  process.env.WS_PATH = '/ws';
 
   beforeAll(done => {
     // Create Express app
@@ -47,7 +47,11 @@ describe('API Endpoints', () => {
       console.log(`Test server running on port ${port}`);
 
       // Connect and authenticate test client
-      connectTestClient(() => {
+      connectTestClient(error => {
+        if (error) {
+          done(error);
+          return;
+        }
         done();
       });
     });
@@ -64,7 +68,7 @@ describe('API Endpoints', () => {
   });
 
   // Helper function to connect test client
-  function connectTestClient(callback: () => void) {
+  function connectTestClient(callback: (error?: Error) => void) {
     clientSocket = new WebSocket(wsServerUrl);
 
     // Handle connection open
@@ -81,10 +85,14 @@ describe('API Endpoints', () => {
     });
 
     // Handle messages from server
-    clientSocket.on('message', (data: WebSocket.MessageEvent) => {
-      const message = JSON.parse(data.data.toString());
+    clientSocket.on('message', (data: WebSocket.RawData) => {
+      const message = JSON.parse(data.toString());
 
-      if (message.type === MessageType.AUTH_RESULT && message.success) {
+      if (message.type === MessageType.AUTH_RESULT) {
+        if (!message.success) {
+          callback(new Error(`Auth failed: ${message.error}`));
+          return;
+        }
         authToken = message.token;
         callback();
       }
@@ -93,6 +101,7 @@ describe('API Endpoints', () => {
     // Handle errors
     clientSocket.on('error', error => {
       console.error('WebSocket client error:', error);
+      callback(error as Error);
     });
   }
 
@@ -100,8 +109,8 @@ describe('API Endpoints', () => {
   it('should retrieve models list', async () => {
     // Setup client message handler for models request
     const messagePromise = new Promise<void>(resolve => {
-      const messageHandler = (data: WebSocket.MessageEvent) => {
-        const message = JSON.parse(data.data.toString());
+      const messageHandler = (data: WebSocket.RawData) => {
+        const message = JSON.parse(data.toString());
 
         if (message.type === MessageType.MODELS_REQUEST) {
           clientSocket.send(
@@ -119,12 +128,12 @@ describe('API Endpoints', () => {
           );
 
           // Remove this handler
-          clientSocket.removeEventListener('message', messageHandler);
+          clientSocket.off('message', messageHandler);
           resolve();
         }
       };
 
-      clientSocket.addEventListener('message', messageHandler);
+      clientSocket.on('message', messageHandler);
     });
 
     // Make API request to models endpoint
@@ -146,8 +155,8 @@ describe('API Endpoints', () => {
   it('should handle chat completions', async () => {
     // Setup client message handler
     const messagePromise = new Promise<void>(resolve => {
-      const messageHandler = (data: WebSocket.MessageEvent) => {
-        const message = JSON.parse(data.data.toString());
+      const messageHandler = (data: WebSocket.RawData) => {
+        const message = JSON.parse(data.toString());
 
         if (message.type === MessageType.CHAT_REQUEST) {
           // Simulate response from LLM
@@ -175,12 +184,12 @@ describe('API Endpoints', () => {
           );
 
           // Remove this handler
-          clientSocket.removeEventListener('message', messageHandler);
+          clientSocket.off('message', messageHandler);
           resolve();
         }
       };
 
-      clientSocket.addEventListener('message', messageHandler);
+      clientSocket.on('message', messageHandler);
     });
 
     // Make API request
