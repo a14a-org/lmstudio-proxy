@@ -1,108 +1,105 @@
 # LM Studio Proxy
 
-A secure proxy system that allows remote API access to a local LM Studio instance.
-
-## Architecture
-
-This project consists of two main components:
-
-1. **Local Proxy Client**: Runs on the same machine as LM Studio and communicates with the local LM Studio API
-2. **Remote API Server**: Provides a secure, authenticated API that remote clients can access
-
-Communication between the remote server and local client uses WebSockets for bidirectional streaming support.
+A secure proxy system that allows remote API access to a local LM Studio instance through WebSocket communication.
 
 ## Features
 
-- Secure authentication for API requests
-- Streaming response support
-- Connection resilience with automatic reconnection
-- Compatible with OpenAI API format
+- Secure authentication with JWT tokens and API keys
+- Streaming response support for real-time completions
+- Automatic reconnection with configurable intervals
+- OpenAI-compatible API format
 - Support for all LM Studio endpoints (completions, chat, embeddings)
+- Rate limiting and error handling middleware
+- Health check endpoints for monitoring
+
+## Tech Stack
+
+- **Runtime**: Node.js 20+, Bun
+- **Language**: TypeScript
+- **Server Framework**: Express 5
+- **WebSocket**: ws
+- **HTTP Client**: Axios (client package)
+- **Authentication**: JWT (jsonwebtoken)
+- **Validation**: Zod
+- **Testing**: Jest
+- **Linting**: ESLint, Prettier
+
+## Architecture
+
+This monorepo consists of three packages:
+
+| Package | Description |
+|---------|-------------|
+| `@lmstudio-proxy/common` | Shared types, utilities, and constants |
+| `@lmstudio-proxy/client` | Local proxy client that connects to LM Studio |
+| `@lmstudio-proxy/server` | Remote API server with WebSocket support |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- Yarn
+- Bun
 - LM Studio running locally
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/a14a-org/lmstudio-proxy.git
-cd lmstudio-proxy
-
-# Install dependencies
-yarn install
-
-# Build all packages
-yarn build
+bun install
 ```
 
-### Local Proxy Client Setup
+### Build
 
-1. Configure your client settings:
+```bash
+bun run build
+```
 
-   ```bash
-   cd packages/client
-   cp .env.example .env
-   # Edit .env with your settings
-   ```
+## Environment Variables
 
-2. Start the local proxy client:
-   ```bash
-   yarn start
-   ```
+### Server (`@lmstudio-proxy/server`)
 
-### Remote Server Setup
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `PORT` | Server port | `3000` | No |
+| `HOST` | Server host | `0.0.0.0` | No |
+| `NODE_ENV` | Environment mode | `development` | No |
+| `API_KEY` | API key for authentication | - | Yes |
+| `JWT_SECRET` | Secret for JWT signing | - | Yes |
+| `JWT_EXPIRES_IN` | JWT token expiration | `24h` | No |
+| `WS_PATH` | WebSocket endpoint path | `/ws` | No |
+| `WS_PING_INTERVAL_MS` | WebSocket ping interval | `30000` | No |
+| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` | No |
+| `ENABLE_STREAMING` | Enable streaming responses | `true` | No |
 
-1. Configure your server settings:
+### Client (`@lmstudio-proxy/client`)
 
-   ```bash
-   cd packages/server
-   cp .env.example .env
-   # Edit .env with your settings
-   ```
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `REMOTE_SERVER_URL` | Remote proxy server WebSocket URL | - | Yes |
+| `API_KEY` | API key for authentication | - | Yes |
+| `CLIENT_ID` | Unique client identifier | - | Yes |
+| `LM_STUDIO_HOST` | Local LM Studio host | `localhost` | No |
+| `LM_STUDIO_PORT` | Local LM Studio port | `1234` | No |
+| `HEALTH_CHECK_PORT` | Health check endpoint port | `3001` | No |
+| `LOG_LEVEL` | Logging level | `info` | No |
+| `RECONNECT_INTERVAL` | Reconnection interval (ms) | `5000` | No |
 
-2. Start the server:
-   ```bash
-   yarn start
-   ```
+## Scripts
 
-## Deployment on Coolify
-
-The LM Studio Proxy server can be easily deployed using Coolify. This repository includes all necessary configurations for a seamless deployment.
-
-### Prerequisites
-
-- A running Coolify instance
-- Access to your Coolify dashboard
-
-### Deployment Steps
-
-1. In Coolify, create a new service from a Git repository
-2. Connect to the LM Studio Proxy repository (https://github.com/a14a-org/lmstudio-proxy)
-3. Select "Docker" as the build method
-4. The Docker configuration will be automatically detected from the `coolify.json` file
-5. Set the required environment variables in Coolify:
-   - `API_KEY`: Your chosen API key for authentication
-   - `JWT_SECRET`: A secure random string for JWT token signing
-6. Deploy the service
-
-### Configuration Options
-
-You can adjust the following environment variables in Coolify:
-
-- `PORT`: The port the server will listen on (default: 3000)
-- `LOG_LEVEL`: Logging detail level (debug, info, warn, error)
-- `WS_PATH`: WebSocket endpoint path
-- `JWT_EXPIRES_IN`: JWT token expiration time
-
-### Verification
-
-Once deployed, you can verify the server is running by accessing the health endpoint at `https://your-deployment-url/health`
+| Script | Description |
+|--------|-------------|
+| `bun run build` | Build all packages |
+| `bun run clean` | Clean build artifacts |
+| `bun run test` | Run tests for all packages |
+| `bun run lint` | Run ESLint |
+| `bun run lint:fix` | Run ESLint with auto-fix |
+| `bun run format` | Format code with Prettier |
+| `bun run format:check` | Check code formatting |
+| `bun run server` | Start the remote API server |
+| `bun run client` | Start the local proxy client |
+| `bun run test:integration` | Run integration tests |
+| `bun run test:server` | Run server tests |
+| `bun run test:client` | Run client tests |
 
 ## License
 
