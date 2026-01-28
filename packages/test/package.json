@@ -1,21 +1,21 @@
 {
-  "name": "@lmstudio-proxy/test",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'No build needed for test package'",
-    "test": "ts-node run-tests.ts",
-    "test:server": "ts-node test-server.ts",
-    "test:client": "ts-node test-client.ts",
-    "test:stream": "ts-node stream-test.ts"
-  },
-  "dependencies": {
-    "@lmstudio-proxy/common": "^0.1.0",
-    "ws": "^8.19.0"
-  },
-  "devDependencies": {
-    "@types/ws": "^8.18.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
-  }
+	"name": "@lmstudio-proxy/test",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"build": "echo 'No build needed for test package'",
+		"test": "ts-node run-tests.ts",
+		"test:server": "ts-node test-server.ts",
+		"test:client": "ts-node test-client.ts",
+		"test:stream": "ts-node stream-test.ts"
+	},
+	"dependencies": {
+		"@lmstudio-proxy/common": "^0.1.0",
+		"ws": "^8.19.0"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.18.1",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.3"
+	}
 }

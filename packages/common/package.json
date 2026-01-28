@@ -1,26 +1,26 @@
 {
-  "name": "@lmstudio-proxy/common",
-  "version": "0.1.0",
-  "description": "Shared types and utilities for LM Studio Proxy",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "clean": "rimraf dist",
-    "test": "jest"
-  },
-  "dependencies": {
-    "uuid": "^13.0.0",
-    "zod": "^4.3.5"
-  },
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/uuid": "^11.0.0",
-    "jest": "^30.2.0",
-    "rimraf": "^6.1.2",
-    "ts-jest": "^29.1.0",
-    "typescript": "^5.9.3"
-  },
-  "author": "a14a-org",
-  "license": "MIT"
+	"name": "@lmstudio-proxy/common",
+	"version": "0.1.0",
+	"description": "Shared types and utilities for LM Studio Proxy",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"clean": "rimraf dist",
+		"test": "jest"
+	},
+	"dependencies": {
+		"uuid": "^13.0.0",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@types/jest": "^30.0.0",
+		"@types/uuid": "^11.0.0",
+		"jest": "^30.2.0",
+		"rimraf": "^6.1.2",
+		"ts-jest": "^29.1.0",
+		"typescript": "^5.9.3"
+	},
+	"author": "a14a-org",
+	"license": "MIT"
 }

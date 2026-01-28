@@ -1,17 +1,17 @@
 {
-  "dockerfile": "Dockerfile",
-  "dockerContext": ".",
-  "publicPort": 3000,
-  "healthcheckPath": "/health",
-  "env": {
-    "NODE_ENV": "production",
-    "PORT": "3000",
-    "HOST": "0.0.0.0",
-    "WS_PATH": "/ws",
-    "WS_PING_INTERVAL_MS": "30000",
-    "LOG_LEVEL": "info",
-    "API_KEY": "",
-    "JWT_SECRET": "",
-    "JWT_EXPIRES_IN": "24h"
-  }
+	"dockerfile": "Dockerfile",
+	"dockerContext": ".",
+	"publicPort": 3000,
+	"healthcheckPath": "/health",
+	"env": {
+		"NODE_ENV": "production",
+		"PORT": "3000",
+		"HOST": "0.0.0.0",
+		"WS_PATH": "/ws",
+		"WS_PING_INTERVAL_MS": "30000",
+		"LOG_LEVEL": "info",
+		"API_KEY": "",
+		"JWT_SECRET": "",
+		"JWT_EXPIRES_IN": "24h"
+	}
 }

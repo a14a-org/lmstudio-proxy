@@ -1,29 +1,34 @@
-import { Request, Response, NextFunction } from 'express';
-import { ApiError } from '../utils/error';
-import { createLogger } from '../utils/logger';
+import type { NextFunction, Request, Response } from "express";
+import { ApiError } from "../utils/error";
+import { createLogger } from "../utils/logger";
 
-const logger = createLogger('error-handler');
+const logger = createLogger("error-handler");
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
-  logger.error('API error:', err);
+export function errorHandler(
+	err: Error,
+	_req: Request,
+	res: Response,
+	_next: NextFunction,
+): void {
+	logger.error("API error:", err);
 
-  if (err instanceof ApiError) {
-    res.status(err.statusCode).json({
-      error: {
-        message: err.message,
-        type: err.type || 'api_error',
-        code: err.statusCode,
-      },
-    });
-  } else {
-    // Handle unexpected errors
-    res.status(500).json({
-      error: {
-        message: 'An unexpected error occurred',
-        type: 'server_error',
-        code: 500,
-      },
-    });
-  }
+	if (err instanceof ApiError) {
+		res.status(err.statusCode).json({
+			error: {
+				message: err.message,
+				type: err.type || "api_error",
+				code: err.statusCode,
+			},
+		});
+	} else {
+		// Handle unexpected errors
+		res.status(500).json({
+			error: {
+				message: "An unexpected error occurred",
+				type: "server_error",
+				code: 500,
+			},
+		});
+	}
 }

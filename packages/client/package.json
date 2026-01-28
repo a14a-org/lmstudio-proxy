@@ -1,31 +1,31 @@
 {
-  "name": "@lmstudio-proxy/client",
-  "version": "0.1.0",
-  "description": "Local proxy client for LM Studio",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "clean": "rimraf dist",
-    "test": "jest",
-    "start": "node dist/index.js"
-  },
-  "dependencies": {
-    "@lmstudio-proxy/common": "^0.1.0",
-    "axios": "^1.13.2",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "ws": "^8.19.0"
-  },
-  "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
-    "@types/ws": "^8.18.1",
-    "jest": "^30.2.0",
-    "rimraf": "^6.1.2",
-    "ts-jest": "^29.1.0",
-    "typescript": "^5.9.3"
-  },
-  "author": "a14a-org",
-  "license": "MIT"
+	"name": "@lmstudio-proxy/client",
+	"version": "0.1.0",
+	"description": "Local proxy client for LM Studio",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"clean": "rimraf dist",
+		"test": "jest",
+		"start": "node dist/index.js"
+	},
+	"dependencies": {
+		"@lmstudio-proxy/common": "^0.1.0",
+		"axios": "^1.13.2",
+		"dotenv": "^17.2.3",
+		"express": "^5.2.1",
+		"ws": "^8.19.0"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.6",
+		"@types/jest": "^30.0.0",
+		"@types/ws": "^8.18.1",
+		"jest": "^30.2.0",
+		"rimraf": "^6.1.2",
+		"ts-jest": "^29.1.0",
+		"typescript": "^5.9.3"
+	},
+	"author": "a14a-org",
+	"license": "MIT"
 }
