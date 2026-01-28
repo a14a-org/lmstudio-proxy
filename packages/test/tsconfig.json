@@ -1,11 +1,15 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": ".",
-    "esModuleInterop": true,
-    "resolveJsonModule": true
-  },
-  "include": ["./**/*.ts"],
-  "references": [{ "path": "../common" }, { "path": "../server" }, { "path": "../client" }]
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": ".",
+		"esModuleInterop": true,
+		"resolveJsonModule": true
+	},
+	"include": ["./**/*.ts"],
+	"references": [
+		{ "path": "../common" },
+		{ "path": "../server" },
+		{ "path": "../client" }
+	]
 }
