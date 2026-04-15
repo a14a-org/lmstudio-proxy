@@ -3,4 +3,7 @@ module.exports = {
 	testEnvironment: "node",
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 	testMatch: ["**/__tests__/**/*.test.ts"],
+	transform: {
+		"^.+\\.ts$": ["ts-jest", { diagnostics: false }],
+	},
 };
