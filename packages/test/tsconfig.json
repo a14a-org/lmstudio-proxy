@@ -4,12 +4,16 @@
 		"outDir": "./dist",
 		"rootDir": ".",
 		"esModuleInterop": true,
-		"resolveJsonModule": true
+		"resolveJsonModule": true,
+		"types": ["node"]
 	},
 	"include": ["./**/*.ts"],
 	"references": [
 		{ "path": "../common" },
 		{ "path": "../server" },
 		{ "path": "../client" }
-	]
+	],
+	"ts-node": {
+		"transpileOnly": true
+	}
 }
